@@ -10,7 +10,6 @@ class Game {
         this.highScore = localStorage.getItem('pacmanHighScore') || 0;
         this.isRunning = false;
         this.gameLoop = null;
-        this.lastGhostUpdate = [0, 0, 0, 0]; // Track last update time for each ghost
         
         this.initializeGame();
         this.setupEventListeners();
@@ -25,14 +24,6 @@ class Game {
             new Ghost(14, 11, '#ffb8ff'), // Pink ghost
             new Ghost(15, 11, '#00ffff'), // Cyan ghost
             new Ghost(13, 11, '#ffb852')  // Orange ghost
-        ];
-        
-        // Set different update intervals for each ghost
-        this.ghostUpdateIntervals = [
-            60, // Red ghost - fastest
-            70, // Pink ghost
-            80, // Cyan ghost
-            90  // Orange ghost - slowest
         ];
     }
     
@@ -91,7 +82,6 @@ class Game {
         this.score = 0;
         this.lives = 3;
         this.isRunning = false;
-        this.lastGhostUpdate = [0, 0, 0, 0];
         
         // Reinitialize game objects
         this.initializeGame();
@@ -117,17 +107,16 @@ class Game {
             this.updateScore();
         }
         
-        // Update ghosts independently
-        this.ghosts.forEach((ghost, index) => {
-            // Only update ghost if enough time has passed since its last update
-            if (timestamp - this.lastGhostUpdate[index] > this.ghostUpdateIntervals[index]) {
-                ghost.update(this.map);
-                this.lastGhostUpdate[index] = timestamp;
-                
-                // Check for collision with Pacman
-                if (this.checkCollision(this.pacman, ghost)) {
-                    this.handlePacmanGhostCollision(ghost);
-                }
+        // Update ghost chasers
+        Ghost.updateChasers(this.ghosts, timestamp);
+        
+        // Update all ghosts
+        this.ghosts.forEach(ghost => {
+            ghost.update(this.map);
+            
+            // Check for collision with Pacman
+            if (this.checkCollision(this.pacman, ghost)) {
+                this.handlePacmanGhostCollision(ghost);
             }
         });
         

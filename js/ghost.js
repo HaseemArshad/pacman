@@ -1,4 +1,9 @@
 class Ghost {
+    // Static property to track which ghosts are currently chasing
+    static activeChaseGhosts = new Set();
+    static lastChaserSwitch = 0;
+    static switchInterval = 3000; // Switch chasers every 3 seconds
+
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
@@ -15,9 +20,26 @@ class Ghost {
         this.deadDuration = 5; // seconds
         this.startDelay = Math.random() * 2; // Random delay before starting to chase
         this.delayTimer = 0;
-        this.personalityTimer = 0;
-        this.personalityDuration = Math.random() * 5 + 3; // Random duration between 3-8 seconds
-        this.isScattering = false;
+        this.isChasing = false; // Whether this ghost is actively chasing
+    }
+    
+    static updateChasers(ghosts, timestamp) {
+        // Switch chasers every few seconds
+        if (timestamp - Ghost.lastChaserSwitch > Ghost.switchInterval) {
+            Ghost.activeChaseGhosts.clear();
+            
+            // Randomly select 1-2 ghosts to be chasers
+            const numChasers = Math.random() < 0.5 ? 1 : 2;
+            const availableGhosts = ghosts.filter(ghost => !ghost.isDead && !ghost.isVulnerable);
+            
+            for (let i = 0; i < numChasers && i < availableGhosts.length; i++) {
+                const randomIndex = Math.floor(Math.random() * availableGhosts.length);
+                const selectedGhost = availableGhosts.splice(randomIndex, 1)[0];
+                Ghost.activeChaseGhosts.add(selectedGhost);
+            }
+            
+            Ghost.lastChaserSwitch = timestamp;
+        }
     }
     
     update(map) {
@@ -42,13 +64,8 @@ class Ghost {
             }
         }
         
-        // Update personality timer
-        this.personalityTimer += 1/60;
-        if (this.personalityTimer >= this.personalityDuration) {
-            this.isScattering = !this.isScattering;
-            this.personalityTimer = 0;
-            this.personalityDuration = Math.random() * 5 + 3; // New random duration
-        }
+        // Update whether this ghost is chasing
+        this.isChasing = Ghost.activeChaseGhosts.has(this);
         
         const possibleDirections = ['up', 'down', 'left', 'right'];
         let bestDirection = this.direction;
@@ -83,8 +100,8 @@ class Ghost {
                     // Run away from Pacman
                     targetX = map.pacmanX > 14 ? 0 : 27;
                     targetY = map.pacmanY > 15 ? 0 : 30;
-                } else if (this.isScattering) {
-                    // Move to corner based on ghost color
+                } else if (!this.isChasing) {
+                    // Move to corner based on ghost color if not chasing
                     switch (this.color) {
                         case '#ff0000': // Red - top right
                             targetX = 27; targetY = 0;
@@ -100,9 +117,25 @@ class Ghost {
                             break;
                     }
                 } else {
-                    // Chase Pacman with slight variation
-                    targetX = map.pacmanX + (Math.random() * 4 - 2);
-                    targetY = map.pacmanY + (Math.random() * 4 - 2);
+                    // Actively chase Pacman with slight variation
+                    targetX = map.pacmanX;
+                    targetY = map.pacmanY;
+                    
+                    // Add personality to chasing behavior
+                    switch (this.color) {
+                        case '#ff0000': // Red - direct chase
+                            break;
+                        case '#ffb8ff': // Pink - try to get ahead of Pacman
+                            targetX = map.pacmanX + (map.pacmanX - this.x) * 2;
+                            targetY = map.pacmanY + (map.pacmanY - this.y) * 2;
+                            break;
+                        case '#00ffff': // Cyan - flank from right
+                            targetX += 2;
+                            break;
+                        case '#ffb852': // Orange - flank from left
+                            targetX -= 2;
+                            break;
+                    }
                 }
                 
                 const distance = Math.sqrt(
@@ -128,18 +161,21 @@ class Ghost {
         let nextX = this.x;
         let nextY = this.y;
         
+        // Adjust speed based on chase state
+        const currentSpeed = this.isChasing ? this.speed * 1.2 : this.speed * 0.8;
+        
         switch (this.direction) {
             case 'left':
-                nextX -= this.speed;
+                nextX -= currentSpeed;
                 break;
             case 'right':
-                nextX += this.speed;
+                nextX += currentSpeed;
                 break;
             case 'up':
-                nextY -= this.speed;
+                nextY -= currentSpeed;
                 break;
             case 'down':
-                nextY += this.speed;
+                nextY += currentSpeed;
                 break;
         }
         
@@ -174,6 +210,11 @@ class Ghost {
         } else if (this.isDead) {
             ctx.fillStyle = '#ffffff';
         } else {
+            // Add a glowing effect to chasing ghosts
+            if (this.isChasing) {
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+            }
             ctx.fillStyle = this.color;
         }
         
@@ -192,11 +233,13 @@ class Ghost {
     makeVulnerable() {
         this.isVulnerable = true;
         this.vulnerableTimer = 0;
+        Ghost.activeChaseGhosts.delete(this);
     }
     
     kill() {
         this.isDead = true;
         this.deadTimer = 0;
+        Ghost.activeChaseGhosts.delete(this);
     }
     
     reset() {
@@ -205,5 +248,6 @@ class Ghost {
         this.direction = 'right';
         this.isVulnerable = false;
         this.isDead = false;
+        Ghost.activeChaseGhosts.delete(this);
     }
 } 
