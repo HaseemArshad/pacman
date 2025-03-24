@@ -6,8 +6,8 @@ class Pacman {
         this.startY = y;
         this.direction = 'right';
         this.nextDirection = 'right';
-        this.speed = 0.2;
-        this.radius = 0.5;
+        this.speed = 0.15;
+        this.radius = 0.45;
         this.mouthOpen = true;
         this.mouthAngle = 0.3;
         this.animationSpeed = 0.2;
@@ -25,16 +25,18 @@ class Pacman {
         
         // Try to change direction
         if (this.nextDirection !== this.direction) {
-            const nextX = Math.round(this.x) + (this.nextDirection === 'left' ? -1 : this.nextDirection === 'right' ? 1 : 0);
-            const nextY = Math.round(this.y) + (this.nextDirection === 'up' ? -1 : this.nextDirection === 'down' ? 1 : 0);
+            const currentX = Math.round(this.x);
+            const currentY = Math.round(this.y);
             
-            if (!map.isWall(nextX, nextY)) {
-                this.direction = this.nextDirection;
-                // Align to grid when changing direction
-                if (this.direction === 'left' || this.direction === 'right') {
-                    this.y = Math.round(this.y);
-                } else {
-                    this.x = Math.round(this.x);
+            // Only allow direction changes when close to grid center
+            if (Math.abs(this.x - currentX) < 0.2 && Math.abs(this.y - currentY) < 0.2) {
+                const nextX = currentX + (this.nextDirection === 'left' ? -1 : this.nextDirection === 'right' ? 1 : 0);
+                const nextY = currentY + (this.nextDirection === 'up' ? -1 : this.nextDirection === 'down' ? 1 : 0);
+                
+                if (!map.isWall(nextX, nextY)) {
+                    this.direction = this.nextDirection;
+                    this.x = currentX;
+                    this.y = currentY;
                 }
             }
         }
@@ -58,42 +60,19 @@ class Pacman {
                 break;
         }
         
-        // Check for wall collisions with more precision
-        const checkPoints = [
-            { x: nextX - this.radius + 0.1, y: nextY }, // Left edge
-            { x: nextX + this.radius - 0.1, y: nextY }, // Right edge
-            { x: nextX, y: nextY - this.radius + 0.1 }, // Top edge
-            { x: nextX, y: nextY + this.radius - 0.1 }  // Bottom edge
-        ];
+        // Simple wall collision check at next position
+        const nextCellX = Math.floor(nextX);
+        const nextCellY = Math.floor(nextY);
         
-        let canMove = true;
-        for (const point of checkPoints) {
-            if (map.isWall(point.x, point.y)) {
-                canMove = false;
-                break;
-            }
-        }
+        // Check the cells that Pacman might intersect with
+        const canMove = !map.isWall(nextCellX, nextCellY) && 
+                       !map.isWall(Math.ceil(nextX), nextCellY) &&
+                       !map.isWall(nextCellX, Math.ceil(nextY)) &&
+                       !map.isWall(Math.ceil(nextX), Math.ceil(nextY));
         
         if (canMove) {
             this.x = nextX;
             this.y = nextY;
-            
-            // Ensure Pacman stays aligned to the grid in corridors
-            if (this.direction === 'left' || this.direction === 'right') {
-                const targetY = Math.round(this.y);
-                if (Math.abs(this.y - targetY) < 0.1) {
-                    this.y = targetY;
-                }
-            } else {
-                const targetX = Math.round(this.x);
-                if (Math.abs(this.x - targetX) < 0.1) {
-                    this.x = targetX;
-                }
-            }
-        } else {
-            // If we hit a wall, align to the grid
-            this.x = Math.round(this.x);
-            this.y = Math.round(this.y);
         }
         
         // Handle tunnel wrapping
