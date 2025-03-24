@@ -15,6 +15,9 @@ class Ghost {
         this.deadDuration = 5; // seconds
         this.startDelay = Math.random() * 2; // Random delay before starting to chase
         this.delayTimer = 0;
+        this.personalityTimer = 0;
+        this.personalityDuration = Math.random() * 5 + 3; // Random duration between 3-8 seconds
+        this.isScattering = false;
     }
     
     update(map) {
@@ -39,10 +42,20 @@ class Ghost {
             }
         }
         
-        // Simple ghost AI: Try to move towards Pacman
+        // Update personality timer
+        this.personalityTimer += 1/60;
+        if (this.personalityTimer >= this.personalityDuration) {
+            this.isScattering = !this.isScattering;
+            this.personalityTimer = 0;
+            this.personalityDuration = Math.random() * 5 + 3; // New random duration
+        }
+        
         const possibleDirections = ['up', 'down', 'left', 'right'];
         let bestDirection = this.direction;
         let minDistance = Infinity;
+        
+        // Randomize direction order to prevent predictable movement
+        possibleDirections.sort(() => Math.random() - 0.5);
         
         for (const dir of possibleDirections) {
             let nextX = this.x;
@@ -64,9 +77,37 @@ class Ghost {
             }
             
             if (!map.isWall(nextX, nextY)) {
+                let targetX, targetY;
+                
+                if (this.isVulnerable) {
+                    // Run away from Pacman
+                    targetX = map.pacmanX > 14 ? 0 : 27;
+                    targetY = map.pacmanY > 15 ? 0 : 30;
+                } else if (this.isScattering) {
+                    // Move to corner based on ghost color
+                    switch (this.color) {
+                        case '#ff0000': // Red - top right
+                            targetX = 27; targetY = 0;
+                            break;
+                        case '#ffb8ff': // Pink - top left
+                            targetX = 0; targetY = 0;
+                            break;
+                        case '#00ffff': // Cyan - bottom right
+                            targetX = 27; targetY = 30;
+                            break;
+                        case '#ffb852': // Orange - bottom left
+                            targetX = 0; targetY = 30;
+                            break;
+                    }
+                } else {
+                    // Chase Pacman with slight variation
+                    targetX = map.pacmanX + (Math.random() * 4 - 2);
+                    targetY = map.pacmanY + (Math.random() * 4 - 2);
+                }
+                
                 const distance = Math.sqrt(
-                    Math.pow(nextX - map.pacmanX, 2) + 
-                    Math.pow(nextY - map.pacmanY, 2)
+                    Math.pow(nextX - targetX, 2) + 
+                    Math.pow(nextY - targetY, 2)
                 );
                 
                 if (distance < minDistance) {
@@ -74,6 +115,11 @@ class Ghost {
                     bestDirection = dir;
                 }
             }
+        }
+        
+        // Occasionally maintain current direction to prevent erratic movement
+        if (Math.random() < 0.7 && !map.isWall(this.x, this.y)) {
+            bestDirection = this.direction;
         }
         
         this.direction = bestDirection;

@@ -39,7 +39,14 @@ body {
     text-align: center;
 }
 
-#startButton {
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#startButton, #restartButton {
     background-color: #ff0;
     color: #000;
     border: none;
@@ -50,8 +57,16 @@ body {
     transition: background-color 0.3s;
 }
 
-#startButton:hover {
+#startButton:hover, #restartButton:hover {
     background-color: #ffd700;
+}
+
+#restartButton {
+    background-color: #ff9900;
+}
+
+#restartButton:hover {
+    background-color: #ffad33;
 }
 
 .mobile-controls {

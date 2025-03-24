@@ -10,18 +10,30 @@ class Game {
         this.highScore = localStorage.getItem('pacmanHighScore') || 0;
         this.isRunning = false;
         this.gameLoop = null;
+        this.lastGhostUpdate = [0, 0, 0, 0]; // Track last update time for each ghost
         
-        this.map = new GameMap();
-        this.pacman = new Pacman(14, 23); // Updated starting position
-        this.ghosts = [
-            new Ghost(13, 11, 'red'),
-            new Ghost(14, 11, 'pink'),
-            new Ghost(15, 11, 'cyan'),
-            new Ghost(13, 11, 'orange')
-        ];
-        
+        this.initializeGame();
         this.setupEventListeners();
         this.updateHighScore();
+    }
+    
+    initializeGame() {
+        this.map = new GameMap();
+        this.pacman = new Pacman(14, 23);
+        this.ghosts = [
+            new Ghost(13, 11, '#ff0000'), // Red ghost
+            new Ghost(14, 11, '#ffb8ff'), // Pink ghost
+            new Ghost(15, 11, '#00ffff'), // Cyan ghost
+            new Ghost(13, 11, '#ffb852')  // Orange ghost
+        ];
+        
+        // Set different update intervals for each ghost
+        this.ghostUpdateIntervals = [
+            60, // Red ghost - fastest
+            70, // Pink ghost
+            80, // Cyan ghost
+            90  // Orange ghost - slowest
+        ];
     }
     
     setupEventListeners() {
@@ -52,34 +64,50 @@ class Game {
             }
         });
         
+        document.getElementById('startButton').addEventListener('click', () => this.start());
+        document.getElementById('restartButton').addEventListener('click', () => this.restart());
+        
         // Mobile controls
         document.getElementById('upButton').addEventListener('click', () => this.pacman.setDirection('up'));
         document.getElementById('downButton').addEventListener('click', () => this.pacman.setDirection('down'));
         document.getElementById('leftButton').addEventListener('click', () => this.pacman.setDirection('left'));
         document.getElementById('rightButton').addEventListener('click', () => this.pacman.setDirection('right'));
-        
-        document.getElementById('startButton').addEventListener('click', () => this.start());
     }
     
     start() {
         if (this.isRunning) return;
         
         this.isRunning = true;
+        this.gameLoop = requestAnimationFrame(() => this.update());
+    }
+    
+    restart() {
+        // Stop the current game loop
+        if (this.gameLoop) {
+            cancelAnimationFrame(this.gameLoop);
+        }
+        
+        // Reset game state
         this.score = 0;
         this.lives = 3;
+        this.isRunning = false;
+        this.lastGhostUpdate = [0, 0, 0, 0];
+        
+        // Reinitialize game objects
+        this.initializeGame();
+        
+        // Update display
         this.updateScore();
         this.updateLives();
         
-        this.pacman.reset();
-        this.ghosts.forEach(ghost => ghost.reset());
-        
-        this.gameLoop = setInterval(() => this.update(), 1000 / 60);
+        // Draw the initial state
+        this.draw();
     }
     
-    update() {
-        this.pacman.update(this.map);
+    update(timestamp = 0) {
+        if (!this.isRunning) return;
         
-        // Update Pacman's position in the map for ghost AI
+        this.pacman.update(this.map);
         this.map.updatePacmanPosition(this.pacman.x, this.pacman.y);
         
         // Check for dot collection
@@ -89,19 +117,24 @@ class Game {
             this.updateScore();
         }
         
-        // Update ghosts
-        this.ghosts.forEach(ghost => {
-            ghost.update(this.map);
-            
-            // Check for collision with Pacman
-            if (this.checkCollision(this.pacman, ghost)) {
-                this.handlePacmanGhostCollision(ghost);
+        // Update ghosts independently
+        this.ghosts.forEach((ghost, index) => {
+            // Only update ghost if enough time has passed since its last update
+            if (timestamp - this.lastGhostUpdate[index] > this.ghostUpdateIntervals[index]) {
+                ghost.update(this.map);
+                this.lastGhostUpdate[index] = timestamp;
+                
+                // Check for collision with Pacman
+                if (this.checkCollision(this.pacman, ghost)) {
+                    this.handlePacmanGhostCollision(ghost);
+                }
             }
         });
         
         // Check for game over
         if (this.lives <= 0) {
             this.gameOver();
+            return;
         }
         
         // Check for level completion
@@ -110,6 +143,7 @@ class Game {
         }
         
         this.draw();
+        this.gameLoop = requestAnimationFrame((timestamp) => this.update(timestamp));
     }
     
     draw() {
@@ -167,7 +201,7 @@ class Game {
     }
     
     gameOver() {
-        clearInterval(this.gameLoop);
+        cancelAnimationFrame(this.gameLoop);
         this.isRunning = false;
         alert('Game Over! Your score: ' + this.score);
     }
