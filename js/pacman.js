@@ -25,11 +25,17 @@ class Pacman {
         
         // Try to change direction
         if (this.nextDirection !== this.direction) {
-            const nextX = this.x + (this.nextDirection === 'left' ? -1 : this.nextDirection === 'right' ? 1 : 0);
-            const nextY = this.y + (this.nextDirection === 'up' ? -1 : this.nextDirection === 'down' ? 1 : 0);
+            const nextX = Math.round(this.x) + (this.nextDirection === 'left' ? -1 : this.nextDirection === 'right' ? 1 : 0);
+            const nextY = Math.round(this.y) + (this.nextDirection === 'up' ? -1 : this.nextDirection === 'down' ? 1 : 0);
             
             if (!map.isWall(nextX, nextY)) {
                 this.direction = this.nextDirection;
+                // Align to grid when changing direction
+                if (this.direction === 'left' || this.direction === 'right') {
+                    this.y = Math.round(this.y);
+                } else {
+                    this.x = Math.round(this.x);
+                }
             }
         }
         
@@ -52,10 +58,42 @@ class Pacman {
                 break;
         }
         
-        // Check for wall collisions
-        if (!map.isWall(nextX, nextY)) {
+        // Check for wall collisions with more precision
+        const checkPoints = [
+            { x: nextX - this.radius + 0.1, y: nextY }, // Left edge
+            { x: nextX + this.radius - 0.1, y: nextY }, // Right edge
+            { x: nextX, y: nextY - this.radius + 0.1 }, // Top edge
+            { x: nextX, y: nextY + this.radius - 0.1 }  // Bottom edge
+        ];
+        
+        let canMove = true;
+        for (const point of checkPoints) {
+            if (map.isWall(point.x, point.y)) {
+                canMove = false;
+                break;
+            }
+        }
+        
+        if (canMove) {
             this.x = nextX;
             this.y = nextY;
+            
+            // Ensure Pacman stays aligned to the grid in corridors
+            if (this.direction === 'left' || this.direction === 'right') {
+                const targetY = Math.round(this.y);
+                if (Math.abs(this.y - targetY) < 0.1) {
+                    this.y = targetY;
+                }
+            } else {
+                const targetX = Math.round(this.x);
+                if (Math.abs(this.x - targetX) < 0.1) {
+                    this.x = targetX;
+                }
+            }
+        } else {
+            // If we hit a wall, align to the grid
+            this.x = Math.round(this.x);
+            this.y = Math.round(this.y);
         }
         
         // Handle tunnel wrapping
