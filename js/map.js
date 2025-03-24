@@ -13,7 +13,7 @@ class GameMap {
     }
     
     reset() {
-        // Initialize walls array
+        // Initialize arrays
         this.walls = Array(this.height).fill().map(() => Array(this.width).fill(false));
         this.dots = Array(this.height).fill().map(() => Array(this.width).fill(false));
         this.powerDots = Array(this.height).fill().map(() => Array(this.width).fill(false));
@@ -34,7 +34,7 @@ class GameMap {
             "1111110110000000000110111111",
             "1111110110111--1110110111111",
             "1111110110100000010110111111",
-            "0000000000100000010000000000",
+            "0000000000100000010000000000", // Tunnel connection row
             "1111110110100000010110111111",
             "1111110110111111110110111111",
             "1111110110000000000110111111",
@@ -70,8 +70,13 @@ class GameMap {
     }
     
     isWall(x, y) {
-        // Handle out of bounds
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+        // Special handling for tunnel
+        if (y === 14) { // Tunnel row
+            return false; // Never block movement in the tunnel
+        }
+        
+        // Handle out of bounds except for tunnel wrapping
+        if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
             return true;
         }
         

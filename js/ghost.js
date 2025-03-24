@@ -10,7 +10,7 @@ class Ghost {
         this.startX = x;
         this.startY = y;
         this.color = color;
-        this.speed = 0.1; // Reduced speed for better gameplay
+        this.speed = 0.08; // Reduced speed for smoother movement
         this.direction = 'right';
         this.isVulnerable = false;
         this.vulnerableTimer = 0;
@@ -21,6 +21,9 @@ class Ghost {
         this.startDelay = Math.random() * 2; // Random delay before starting to chase
         this.delayTimer = 0;
         this.isChasing = false; // Whether this ghost is actively chasing
+        this.targetX = x; // Target position for smooth movement
+        this.targetY = y;
+        this.lastDirectionChange = 0; // Timer to prevent rapid direction changes
     }
     
     static updateChasers(ghosts, timestamp) {
@@ -67,119 +70,109 @@ class Ghost {
         // Update whether this ghost is chasing
         this.isChasing = Ghost.activeChaseGhosts.has(this);
         
-        const possibleDirections = ['up', 'down', 'left', 'right'];
-        let bestDirection = this.direction;
-        let minDistance = Infinity;
-        
-        // Randomize direction order to prevent predictable movement
-        possibleDirections.sort(() => Math.random() - 0.5);
-        
-        for (const dir of possibleDirections) {
-            let nextX = this.x;
-            let nextY = this.y;
+        // Only change direction after a minimum time has passed
+        if (Date.now() - this.lastDirectionChange > 500) { // Minimum 500ms between direction changes
+            const currentX = Math.round(this.x);
+            const currentY = Math.round(this.y);
             
-            switch (dir) {
-                case 'left':
-                    nextX -= 1;
-                    break;
-                case 'right':
-                    nextX += 1;
-                    break;
-                case 'up':
-                    nextY -= 1;
-                    break;
-                case 'down':
-                    nextY += 1;
-                    break;
-            }
-            
-            if (!map.isWall(nextX, nextY)) {
-                let targetX, targetY;
+            // Only consider new direction when close to grid center
+            if (Math.abs(this.x - currentX) < 0.1 && Math.abs(this.y - currentY) < 0.1) {
+                const possibleDirections = ['up', 'down', 'left', 'right'];
+                let bestDirection = this.direction;
+                let minDistance = Infinity;
                 
-                if (this.isVulnerable) {
-                    // Run away from Pacman
-                    targetX = map.pacmanX > 14 ? 0 : 27;
-                    targetY = map.pacmanY > 15 ? 0 : 30;
-                } else if (!this.isChasing) {
-                    // Move to corner based on ghost color if not chasing
-                    switch (this.color) {
-                        case '#ff0000': // Red - top right
-                            targetX = 27; targetY = 0;
-                            break;
-                        case '#ffb8ff': // Pink - top left
-                            targetX = 0; targetY = 0;
-                            break;
-                        case '#00ffff': // Cyan - bottom right
-                            targetX = 27; targetY = 30;
-                            break;
-                        case '#ffb852': // Orange - bottom left
-                            targetX = 0; targetY = 30;
-                            break;
-                    }
-                } else {
-                    // Actively chase Pacman with slight variation
-                    targetX = map.pacmanX;
-                    targetY = map.pacmanY;
+                // Remove opposite direction to prevent back-and-forth movement
+                const oppositeDir = {
+                    'up': 'down',
+                    'down': 'up',
+                    'left': 'right',
+                    'right': 'left'
+                };
+                const currentIndex = possibleDirections.indexOf(oppositeDir[this.direction]);
+                if (currentIndex > -1 && Math.random() < 0.8) { // 80% chance to prevent reversal
+                    possibleDirections.splice(currentIndex, 1);
+                }
+                
+                for (const dir of possibleDirections) {
+                    let nextX = currentX;
+                    let nextY = currentY;
                     
-                    // Add personality to chasing behavior
-                    switch (this.color) {
-                        case '#ff0000': // Red - direct chase
-                            break;
-                        case '#ffb8ff': // Pink - try to get ahead of Pacman
-                            targetX = map.pacmanX + (map.pacmanX - this.x) * 2;
-                            targetY = map.pacmanY + (map.pacmanY - this.y) * 2;
-                            break;
-                        case '#00ffff': // Cyan - flank from right
-                            targetX += 2;
-                            break;
-                        case '#ffb852': // Orange - flank from left
-                            targetX -= 2;
-                            break;
+                    switch (dir) {
+                        case 'left': nextX--; break;
+                        case 'right': nextX++; break;
+                        case 'up': nextY--; break;
+                        case 'down': nextY++; break;
+                    }
+                    
+                    if (!map.isWall(nextX, nextY)) {
+                        let targetX, targetY;
+                        
+                        if (this.isVulnerable) {
+                            targetX = map.pacmanX > 14 ? 0 : 27;
+                            targetY = map.pacmanY > 15 ? 0 : 30;
+                        } else if (!this.isChasing) {
+                            switch (this.color) {
+                                case '#ff0000': targetX = 27; targetY = 0; break;
+                                case '#ffb8ff': targetX = 0; targetY = 0; break;
+                                case '#00ffff': targetX = 27; targetY = 30; break;
+                                case '#ffb852': targetX = 0; targetY = 30; break;
+                            }
+                        } else {
+                            targetX = map.pacmanX;
+                            targetY = map.pacmanY;
+                            
+                            switch (this.color) {
+                                case '#ffb8ff': // Pink - try to get ahead
+                                    targetX = map.pacmanX + (map.pacmanX - this.x);
+                                    targetY = map.pacmanY + (map.pacmanY - this.y);
+                                    break;
+                                case '#00ffff': // Cyan - flank right
+                                    targetX += 2;
+                                    break;
+                                case '#ffb852': // Orange - flank left
+                                    targetX -= 2;
+                                    break;
+                            }
+                        }
+                        
+                        const distance = Math.sqrt(
+                            Math.pow(nextX - targetX, 2) + 
+                            Math.pow(nextY - targetY, 2)
+                        );
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            bestDirection = dir;
+                        }
                     }
                 }
                 
-                const distance = Math.sqrt(
-                    Math.pow(nextX - targetX, 2) + 
-                    Math.pow(nextY - targetY, 2)
-                );
-                
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    bestDirection = dir;
+                if (bestDirection !== this.direction) {
+                    this.direction = bestDirection;
+                    this.lastDirectionChange = Date.now();
+                    this.x = currentX;
+                    this.y = currentY;
                 }
             }
         }
         
-        // Occasionally maintain current direction to prevent erratic movement
-        if (Math.random() < 0.7 && !map.isWall(this.x, this.y)) {
-            bestDirection = this.direction;
-        }
-        
-        this.direction = bestDirection;
-        
-        // Move in the chosen direction
+        // Move in the current direction
         let nextX = this.x;
         let nextY = this.y;
-        
-        // Adjust speed based on chase state
         const currentSpeed = this.isChasing ? this.speed * 1.2 : this.speed * 0.8;
         
         switch (this.direction) {
-            case 'left':
-                nextX -= currentSpeed;
-                break;
-            case 'right':
-                nextX += currentSpeed;
-                break;
-            case 'up':
-                nextY -= currentSpeed;
-                break;
-            case 'down':
-                nextY += currentSpeed;
-                break;
+            case 'left': nextX -= currentSpeed; break;
+            case 'right': nextX += currentSpeed; break;
+            case 'up': nextY -= currentSpeed; break;
+            case 'down': nextY += currentSpeed; break;
         }
         
-        if (!map.isWall(nextX, nextY)) {
+        // Check if next position is valid
+        if (!map.isWall(Math.floor(nextX), Math.floor(nextY)) &&
+            !map.isWall(Math.ceil(nextX), Math.floor(nextY)) &&
+            !map.isWall(Math.floor(nextX), Math.ceil(nextY)) &&
+            !map.isWall(Math.ceil(nextX), Math.ceil(nextY))) {
             this.x = nextX;
             this.y = nextY;
         }
