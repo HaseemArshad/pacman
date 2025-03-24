@@ -172,4 +172,9 @@ class GameMap {
             }
         }
     }
+    
+    updatePacmanPosition(x, y) {
+        this.pacmanX = x;
+        this.pacmanY = y;
+    }
 } 

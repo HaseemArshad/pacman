@@ -5,7 +5,7 @@ class Ghost {
         this.startX = x;
         this.startY = y;
         this.color = color;
-        this.speed = 0.15;
+        this.speed = 0.1; // Reduced speed for better gameplay
         this.direction = 'right';
         this.isVulnerable = false;
         this.vulnerableTimer = 0;
@@ -13,9 +13,17 @@ class Ghost {
         this.isDead = false;
         this.deadTimer = 0;
         this.deadDuration = 5; // seconds
+        this.startDelay = Math.random() * 2; // Random delay before starting to chase
+        this.delayTimer = 0;
     }
     
     update(map) {
+        // Add initial delay before ghost starts moving
+        if (this.delayTimer < this.startDelay) {
+            this.delayTimer += 1/60;
+            return;
+        }
+        
         if (this.isDead) {
             this.deadTimer += 1/60; // Assuming 60 FPS
             if (this.deadTimer >= this.deadDuration) {

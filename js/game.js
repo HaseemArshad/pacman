@@ -71,6 +71,9 @@ class Game {
     update() {
         this.pacman.update(this.map);
         
+        // Update Pacman's position in the map for ghost AI
+        this.map.updatePacmanPosition(this.pacman.x, this.pacman.y);
+        
         // Check for dot collection
         const dotEaten = this.map.eatDot(this.pacman.x, this.pacman.y);
         if (dotEaten) {
