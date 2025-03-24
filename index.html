@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="lives">Lives: <span id="lives">3</span></div>
+            <div class="high-score">High Score: <span id="highScore">0</span></div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls">
+            <button id="startButton">Start Game</button>
+            <div class="mobile-controls">
+                <button id="upButton">↑</button>
+                <div class="horizontal-controls">
+                    <button id="leftButton">←</button>
+                    <button id="rightButton">→</button>
+                </div>
+                <button id="downButton">↓</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/game.js"></script>
+    <script src="js/pacman.js"></script>
+    <script src="js/ghost.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
