@@ -12,7 +12,7 @@ class Game {
         this.gameLoop = null;
         
         this.map = new GameMap();
-        this.pacman = new Pacman(14, 17); // Starting position
+        this.pacman = new Pacman(14, 23); // Updated starting position
         this.ghosts = [
             new Ghost(13, 11, 'red'),
             new Ghost(14, 11, 'pink'),
@@ -30,15 +30,23 @@ class Game {
             
             switch(e.key) {
                 case 'ArrowUp':
+                case 'w':
+                case 'W':
                     this.pacman.setDirection('up');
                     break;
                 case 'ArrowDown':
+                case 's':
+                case 'S':
                     this.pacman.setDirection('down');
                     break;
                 case 'ArrowLeft':
+                case 'a':
+                case 'A':
                     this.pacman.setDirection('left');
                     break;
                 case 'ArrowRight':
+                case 'd':
+                case 'D':
                     this.pacman.setDirection('right');
                     break;
             }
